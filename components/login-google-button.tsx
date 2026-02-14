@@ -2,6 +2,7 @@
 
 import { GoogleLogo } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { authClient } from '@/lib/auth-client'
 
 export function LoginGoogleButton({ hasOAuthError }: { hasOAuthError: boolean }) {
   const [loading, setLoading] = useState(false)
@@ -11,26 +12,13 @@ export function LoginGoogleButton({ hasOAuthError }: { hasOAuthError: boolean })
     setLoading(true)
     setError(null)
 
-    try {
-      const res = await fetch('/api/auth/sign-in/social', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: 'google',
-          callbackURL: '/',
-          disableRedirect: true,
-        }),
-      })
+    const { error } = await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: '/',
+    })
 
-      const data = await res.json().catch(() => ({}))
-
-      if (!res.ok || !data?.url) {
-        throw new Error(data?.message || 'Failed to start Google sign-in')
-      }
-
-      window.location.href = data.url
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed')
+    if (error) {
+      setError(error.message || 'Failed to start Google sign-in')
       setLoading(false)
     }
   }
