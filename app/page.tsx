@@ -1,7 +1,11 @@
 import { readdir } from 'node:fs/promises'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { Brain, Buildings, ClockClockwise, Code, Cloud, Database, Globe, Kanban, Lightning, HardDrives, WhatsappLogo, GitBranch, CheckCircle, CircleDashed, Clock, TestTube, Rocket, Robot } from '@phosphor-icons/react/dist/ssr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { LogoutButton } from '@/components/logout-button'
+import { auth } from '@/lib/auth'
 
 async function getProjects() {
   try {
@@ -36,6 +40,14 @@ const infra = [
 ]
 
 export default async function Home() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session?.user) {
+    redirect('/login')
+  }
+
   const projects = await getProjects()
 
   return (
@@ -46,7 +58,10 @@ export default async function Home() {
             <h1 className='text-3xl md:text-4xl font-bold tracking-tight'>Pax Brain</h1>
             <p className='text-slate-300 mt-2'>Living dashboard of Pax’s operating system and execution stack.</p>
           </div>
-          <Badge variant='secondary'>MVP • No Auth</Badge>
+          <div className='flex items-center gap-2'>
+            <Badge variant='secondary'>Auth Enabled</Badge>
+            <LogoutButton />
+          </div>
         </div>
 
         <section className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
