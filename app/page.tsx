@@ -1,7 +1,12 @@
 import { readdir } from 'node:fs/promises'
+import Image from 'next/image'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { Brain, Buildings, ClockClockwise, Code, Cloud, Database, Globe, Kanban, Lightning, HardDrives, WhatsappLogo, GitBranch, CheckCircle, CircleDashed, Clock, TestTube, Rocket, Robot } from '@phosphor-icons/react/dist/ssr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { auth } from '@/lib/auth'
+import { LogoutButton } from '@/components/logout-button'
 
 async function getProjects() {
   try {
@@ -36,6 +41,14 @@ const infra = [
 ]
 
 export default async function Home() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session?.user) {
+    redirect('/login')
+  }
+
   const projects = await getProjects()
 
   return (
@@ -46,7 +59,27 @@ export default async function Home() {
             <h1 className='text-3xl md:text-4xl font-bold tracking-tight'>Pax Brain</h1>
             <p className='text-slate-300 mt-2'>Living dashboard of Pax’s operating system and execution stack.</p>
           </div>
-          <Badge variant='secondary'>MVP • No Auth</Badge>
+          <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-2 py-1'>
+              {session.user.image ? (
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || session.user.email || 'User'}
+                  width={24}
+                  height={24}
+                  className='rounded-full'
+                />
+              ) : (
+                <div className='h-6 w-6 rounded-full bg-white/20' />
+              )}
+              <div className='text-xs leading-tight'>
+                <div className='font-medium'>{session.user.name || 'Signed in user'}</div>
+                <div className='text-slate-400'>{session.user.email}</div>
+              </div>
+            </div>
+            <Badge variant='secondary'>Google OAuth</Badge>
+            <LogoutButton />
+          </div>
         </div>
 
         <section className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
