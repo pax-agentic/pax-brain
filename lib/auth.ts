@@ -1,13 +1,13 @@
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
+import Database from 'better-sqlite3'
 import { betterAuth } from 'better-auth'
 import { username } from 'better-auth/plugins/username'
 
 const dbPath = join(process.cwd(), 'data', 'auth.db')
 mkdirSync(dirname(dbPath), { recursive: true })
 
-const db = new DatabaseSync(dbPath)
+const db = new Database(dbPath)
 
 export const auth = betterAuth({
   database: db,
