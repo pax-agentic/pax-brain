@@ -1,0 +1,146 @@
+import { readdir } from 'node:fs/promises'
+import { Brain, Buildings, ClockClockwise, Code, Cloud, Database, Globe, Kanban, Lightning, HardDrives, WhatsappLogo, GitBranch, CheckCircle, CircleDashed, Clock, TestTube, Rocket, Robot } from '@phosphor-icons/react/dist/ssr'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+
+async function getProjects() {
+  try {
+    const entries = await readdir('/data/workspace/projects', { withFileTypes: true })
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort()
+  } catch {
+    return [] as string[]
+  }
+}
+
+const tools = [
+  { name: 'GitHub (gh)', desc: 'Issues, PRs, projects, automation', icon: GitBranch },
+  { name: 'Coolify API', desc: 'Provision and deploy web apps', icon: Cloud },
+  { name: 'WhatsApp Gateway', desc: 'Primary operator channel', icon: WhatsappLogo },
+  { name: 'Cron Jobs', desc: 'Heartbeat + scheduled workflows', icon: ClockClockwise },
+  { name: 'Workspace FS', desc: 'Persistent memory + project context', icon: Database },
+  { name: 'OpenClaw Runtime', desc: 'Tool orchestration and session control', icon: Robot },
+]
+
+const heartbeatRules = [
+  'Every issue must be added to Pax Board.',
+  'Read project PROFILE.md before starting any work.',
+  'Run lint + build before opening a PR.',
+  'After PR, always communicate preview URL.',
+]
+
+const infra = [
+  'Host: projects-1 (188.245.99.243)',
+  'Domain: onniworks.com (+ wildcard subdomains)',
+  'Preview URLs: https://{pr_number}.pr1.onniworks.com',
+  'Deploy pipeline: GitHub → Coolify GitHub App → Nixpacks',
+]
+
+export default async function Home() {
+  const projects = await getProjects()
+
+  return (
+    <main className='min-h-screen bg-slate-950 text-slate-100'>
+      <div className='mx-auto max-w-7xl px-6 py-10 lg:px-10'>
+        <div className='mb-8 flex flex-wrap items-center justify-between gap-3'>
+          <div>
+            <h1 className='text-3xl md:text-4xl font-bold tracking-tight'>Pax Brain</h1>
+            <p className='text-slate-300 mt-2'>Living dashboard of Pax’s operating system and execution stack.</p>
+          </div>
+          <Badge variant='secondary'>MVP • No Auth</Badge>
+        </div>
+
+        <section className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          <Card><CardHeader><CardTitle className='flex items-center gap-2'><Brain size={18}/>Identity</CardTitle></CardHeader><CardContent className='text-sm text-slate-300'>Pax · proactive execution partner ⚙️</CardContent></Card>
+          <Card><CardHeader><CardTitle className='flex items-center gap-2'><Robot size={18}/>Model</CardTitle></CardHeader><CardContent className='text-sm text-slate-300'>openai-codex/gpt-5.3-codex</CardContent></Card>
+          <Card><CardHeader><CardTitle className='flex items-center gap-2'><HardDrives size={18}/>Container</CardTitle></CardHeader><CardContent className='text-sm text-slate-300'>host: 7d0bc0115917 · Linux</CardContent></Card>
+          <Card><CardHeader><CardTitle className='flex items-center gap-2'><Buildings size={18}/>Server</CardTitle></CardHeader><CardContent className='text-sm text-slate-300'>projects-1 / Coolify fleet</CardContent></Card>
+        </section>
+
+        <section className='mt-8 grid gap-6 lg:grid-cols-5'>
+          <Card className='lg:col-span-3'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'><Kanban size={18}/>Workflow</CardTitle>
+              <CardDescription>Operational board flow from intake to shipped outcomes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='grid grid-cols-2 gap-3 md:grid-cols-5'>
+                {[
+                  { label: 'Ideas', Icon: CircleDashed },
+                  { label: 'Ready', Icon: Clock },
+                  { label: 'In Progress', Icon: Lightning },
+                  { label: 'In Review', Icon: TestTube },
+                  { label: 'Done', Icon: CheckCircle },
+                ].map(({ label, Icon }) => (
+                  <div key={label} className='rounded-xl border border-white/10 bg-slate-900/60 p-3 text-center'>
+                    <div className='mx-auto mb-2 w-fit text-cyan-300'><Icon size={18} weight='duotone' /></div>
+                    <div className='text-sm font-medium'>{label}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='lg:col-span-2'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'><Globe size={18}/>Infrastructure</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className='space-y-2 text-sm text-slate-300'>
+                {infra.map((item) => <li key={item}>• {item}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className='mt-8 grid gap-6 lg:grid-cols-3'>
+          <Card className='lg:col-span-2'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'><Code size={18}/>Tools & Integrations</CardTitle>
+              <CardDescription>Execution surface available to Pax.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='grid gap-3 sm:grid-cols-2'>
+                {tools.map((tool) => (
+                  <div key={tool.name} className='rounded-xl border border-white/10 bg-slate-900/60 p-3'>
+                    <div className='mb-1 flex items-center gap-2 font-medium'><tool.icon size={16} weight='duotone' /> {tool.name}</div>
+                    <p className='text-xs text-slate-300'>{tool.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'><Rocket size={18}/>Projects</CardTitle>
+              <CardDescription>Auto-read from /data/workspace/projects</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-2'>
+                {projects.length === 0 ? (
+                  <p className='text-sm text-slate-300'>No projects found.</p>
+                ) : (
+                  projects.map((name) => <Badge key={name} variant='muted' className='mr-2 mb-2'>{name}</Badge>)
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className='mt-8'>
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'><ClockClockwise size={18}/>HEARTBEAT Rules</CardTitle>
+              <CardDescription>Critical operating constraints (summarized).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className='grid gap-2 text-sm text-slate-300 md:grid-cols-2'>
+                {heartbeatRules.map((rule) => <li key={rule}>• {rule}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </main>
+  )
+}

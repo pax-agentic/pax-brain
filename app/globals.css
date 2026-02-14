@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020617;
+  --foreground: #e2e8f0;
+}
+
+* {
+  border-color: rgb(148 163 184 / 0.18);
+}
+
+body {
+  color: var(--foreground);
+  background: radial-gradient(circle at top, #0b1225, #020617 55%);
+  min-height: 100vh;
+}
