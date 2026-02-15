@@ -154,6 +154,100 @@ For separate client/server projects: `createAuthClient<typeof auth>()`.
 4. **Cookie cache** - Custom session fields NOT cached, always re-fetched
 5. **Stateless mode** - No DB = session in cookie only, logout on cache expiry
 6. **Change email flow** - Sends to current email first, then new email
+7. **Async migrations are unreliable in Next.js production** - See Next.js section below
+
+---
+
+## Next.js + SQLite: Critical Migration Pattern
+
+**⚠️ NEVER use `getMigrations()`/`runMigrations()` from `better-auth/db` in Next.js production with SQLite.**
+
+The pattern from the docs — calling `void migrateDatabase()` at module load time — is a fire-and-forget async promise that is **unreliable** in Next.js production builds:
+- The module may be loaded lazily, causing a race between the first auth request and the migration
+- The Next.js bundler may tree-shake or defer the async call
+- The SQLite database file gets created (0 bytes) but no tables are written
+
+### Correct pattern: synchronous table creation with `better-sqlite3`
+
+Since `better-sqlite3` is fully synchronous, create tables at module-load time with `db.exec()` and `CREATE TABLE IF NOT EXISTS`. This guarantees the schema exists before any auth handler runs and is idempotent (safe on every import).
+
+```typescript
+import { mkdirSync } from 'node:fs'
+import { betterAuth } from 'better-auth'
+import Database from 'better-sqlite3'
+
+const DB_DIR = process.env.NODE_ENV === 'production' ? '/app/data' : './data'
+const DB_PATH = `${DB_DIR}/auth.db`
+
+mkdirSync(DB_DIR, { recursive: true })
+const db = new Database(DB_PATH)
+
+// Synchronous — runs before any request can reach the auth handler
+db.exec(`
+  CREATE TABLE IF NOT EXISTS "user" (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    emailVerified INTEGER NOT NULL DEFAULT 0,
+    image TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS "session" (
+    id TEXT PRIMARY KEY NOT NULL,
+    expiresAt TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    ipAddress TEXT,
+    userAgent TEXT,
+    userId TEXT NOT NULL REFERENCES "user"(id)
+  );
+  CREATE TABLE IF NOT EXISTS "account" (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,
+    userId TEXT NOT NULL REFERENCES "user"(id),
+    accessToken TEXT,
+    refreshToken TEXT,
+    idToken TEXT,
+    accessTokenExpiresAt TEXT,
+    refreshTokenExpiresAt TEXT,
+    scope TEXT,
+    password TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS "verification" (
+    id TEXT PRIMARY KEY NOT NULL,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    expiresAt TEXT NOT NULL,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+`)
+
+export const auth = betterAuth({
+  database: db,
+  // ... rest of config
+})
+```
+
+### Key rules
+- **DO** use synchronous `db.exec()` with `CREATE TABLE IF NOT EXISTS` for SQLite
+- **DO** create the data directory with `mkdirSync` before opening the database
+- **DO NOT** use `getMigrations()` / `runMigrations()` from `better-auth/db` in production Next.js
+- **DO NOT** use `void asyncFunction()` fire-and-forget patterns for critical setup
+- **DO NOT** use `as const` on the config object if you need to pass it to other better-auth functions
+- **DO** mount a persistent volume for the SQLite file (e.g., `/app/data`) so it survives redeployments
+- If adding plugins that require new tables, add the corresponding `CREATE TABLE IF NOT EXISTS` statements
+
+### Persistent storage (Coolify / Docker)
+When deploying with Coolify, configure `custom_docker_run_options` to mount a host directory:
+- Host: `/data/coolify/applications/<UUID>/data`
+- Container: `/app/data`
+- The SQLite auth database goes in this mounted directory
 
 ---
 
