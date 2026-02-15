@@ -1,7 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { APIError } from 'better-auth/api'
 import { betterAuth } from 'better-auth'
-import { getMigrations } from 'better-auth/db'
 import Database from 'better-sqlite3'
 
 const ALLOWED_EMAIL = 'digitaldave.eth@gmail.com'
@@ -11,7 +10,62 @@ const DB_PATH = `${DB_DIR}/auth.db`
 mkdirSync(DB_DIR, { recursive: true })
 const db = new Database(DB_PATH)
 
-export const authConfig = {
+// --- Synchronous table creation -------------------------------------------
+// better-auth's getMigrations()/runMigrations() is async and unreliable
+// at module-load time in Next.js production (the fire-and-forget promise
+// either races with the first request or gets swallowed by the bundler).
+// Because better-sqlite3 is synchronous we can guarantee the schema exists
+// before any auth handler runs.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS "user" (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    emailVerified INTEGER NOT NULL DEFAULT 0,
+    image TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS "session" (
+    id TEXT PRIMARY KEY NOT NULL,
+    expiresAt TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL,
+    ipAddress TEXT,
+    userAgent TEXT,
+    userId TEXT NOT NULL REFERENCES "user"(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS "account" (
+    id TEXT PRIMARY KEY NOT NULL,
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,
+    userId TEXT NOT NULL REFERENCES "user"(id),
+    accessToken TEXT,
+    refreshToken TEXT,
+    idToken TEXT,
+    accessTokenExpiresAt TEXT,
+    refreshTokenExpiresAt TEXT,
+    scope TEXT,
+    password TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS "verification" (
+    id TEXT PRIMARY KEY NOT NULL,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    expiresAt TEXT NOT NULL,
+    createdAt TEXT,
+    updatedAt TEXT
+  );
+`)
+// --------------------------------------------------------------------------
+
+export const auth = betterAuth({
   database: db,
   baseURL:
     process.env.BETTER_AUTH_BASE_URL ||
@@ -41,24 +95,4 @@ export const authConfig = {
       },
     },
   },
-} as const
-
-export const auth = betterAuth(authConfig)
-
-async function migrateDatabase() {
-  try {
-    const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(authConfig)
-
-    if (toBeCreated.length > 0 || toBeAdded.length > 0) {
-      console.log(
-        `[Better Auth] Running migrations — tables: ${toBeCreated.length}, fields: ${toBeAdded.length}`,
-      )
-      await runMigrations()
-      console.log('[Better Auth] Migrations complete.')
-    }
-  } catch (err) {
-    console.error('[Better Auth] Migration failed:', err)
-  }
-}
-
-void migrateDatabase()
+})
