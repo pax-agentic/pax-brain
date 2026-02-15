@@ -302,7 +302,7 @@ export default async function Home() {
                   <div key={file.path} className='rounded-xl border border-white/10 bg-slate-900/60 p-3'>
                     <div className='mb-2 flex items-center justify-between gap-2'>
                       <div className='font-medium'>{file.name}</div>
-                      <Badge variant={file.exists ? 'secondary' : 'destructive'}>
+                      <Badge variant={file.exists ? 'secondary' : 'muted'} className={!file.exists ? 'border-red-400/40 bg-red-500/20 text-red-200' : ''}>
                         {file.exists ? formatBytes(file.sizeBytes) : 'missing'}
                       </Badge>
                     </div>
